@@ -13,77 +13,47 @@ Date: [14/Nov]
 """
 
 # Your code starts here
+from sklearn.linear_model import LinearRegression
 import joblib
-from sklearn.linear_model import LinearRegression, Ridge, Lasso
-from sklearn.model_selection import cross_val_score
-from preprocessing import load_and_preprocess_data  # Assuming preprocessing.py is in the same folder
 
 def train_linear_model(X_train, y_train):
+    """
+    Train a Linear Regression model.
+    Args:
+        X_train (DataFrame): Training feature matrix.
+        y_train (array-like): Training target variable.
+    Returns:
+        model (LinearRegression): Trained Linear Regression model.
+    """
     try:
         model = LinearRegression()
         model.fit(X_train, y_train)
+        print("Linear Regression model trained successfully.")
         return model
     except Exception as e:
-        print(f"Error while training Linear Regression model: {e}")
+        print(f"Error during Linear Regression model training: {e}")
         return None
 
-def train_ridge_model(X_train, y_train, alpha=1.0):
+def model_training_main(X_train, X_test, y_train):
+    """
+    Main function to train the model and save it.
+    Args:
+        X_train, X_test, y_train (DataFrame, array-like): Train-test data.
+    """
     try:
-        ridge_model = Ridge(alpha=alpha)
-        ridge_model.fit(X_train, y_train)
-        return ridge_model
-    except Exception as e:
-        print(f"Error while training Ridge Regression model: {e}")
-        return None
-
-def train_lasso_model(X_train, y_train, alpha=0.1):
-    try:
-        lasso_model = Lasso(alpha=alpha)
-        lasso_model.fit(X_train, y_train)
-        return lasso_model
-    except Exception as e:
-        print(f"Error while training Lasso Regression model: {e}")
-        return None
-
-def evaluate_model_with_cross_validation(model, X, y):
-    try:
-        cv_scores = cross_val_score(model, X, y, cv=5, scoring='neg_mean_squared_error')
-        mean_cv_mse = -cv_scores.mean()
-        print(f"Cross-Validation Mean Squared Error (MSE): {mean_cv_mse:.4f}")
-        return mean_cv_mse
-    except Exception as e:
-        print(f"Error during cross-validation: {e}")
-        return None
-
-def main():
-    try:
-        # Load and preprocess the data
-        X_train, X_test, y_train, y_test, X, y = load_and_preprocess_data()
-
-        # Train the Linear Regression model
-        linear_model = train_linear_model(X_train, y_train)
-        if linear_model:
-            joblib.dump(linear_model, 'linear_model.pkl')
-            print("Linear Regression model saved as 'linear_model.pkl'")
-            # Evaluate the model using cross-validation
-            evaluate_model_with_cross_validation(linear_model, X, y)
-
-        # Train and evaluate Ridge Regression model
-        ridge_model = train_ridge_model(X_train, y_train, alpha=1.0)
-        if ridge_model:
-            joblib.dump(ridge_model, 'ridge_model.pkl')
-            print("Ridge Regression model saved as 'ridge_model.pkl'")
-            evaluate_model_with_cross_validation(ridge_model, X, y)
-
-        # Train and evaluate Lasso Regression model
-        lasso_model = train_lasso_model(X_train, y_train, alpha=0.1)
-        if lasso_model:
-            joblib.dump(lasso_model, 'lasso_model.pkl')
-            print("Lasso Regression model saved as 'lasso_model.pkl'")
-            evaluate_model_with_cross_validation(lasso_model, X, y)
-
+        # Train the model
+        model = train_linear_model(X_train, y_train)
+        if model:
+            # Save the trained model
+            joblib.dump(model, 'linear_model.pkl')
+            print("Model saved as 'linear_model.pkl'")
+            # Generate and save predictions (optional, for later evaluation)
+            y_pred = model.predict(X_test)
+            return model, y_pred
+        else:
+            print("Model training failed.")
+            return None, None
     except Exception as e:
         print(f"An error occurred in the main function: {e}")
+        return None, None
 
-if __name__ == "__main__":
-    main()

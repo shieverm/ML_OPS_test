@@ -199,7 +199,7 @@ def load_data(file_path):
 
 def preprocess_data(energy, sensor_data, weather):
     try:
-        # Convert timestamps to datetime format
+        # Convert timestamps to datetime format so that timeformat would be unique across all datasets
         energy['timestamp'] = pd.to_datetime(energy['timestamp']).dt.tz_localize('UTC')
         sensor_data['timestamp'] = pd.to_datetime(sensor_data['timestamp']).dt.tz_convert('UTC')
         weather['timestamp'] = pd.to_datetime(weather['timestamp']).dt.tz_localize('UTC')
@@ -208,7 +208,7 @@ def preprocess_data(energy, sensor_data, weather):
         merged_data = pd.merge(energy, sensor_data, on='timestamp', how='outer')
         merged_data = pd.merge(merged_data, weather, on='timestamp', how='outer')
 
-        # Handle missing values (example: forward fill)
+        # Handle missing values 
         merged_data.fillna(method='ffill', inplace=True)
 
         return merged_data
@@ -313,42 +313,86 @@ def scale_and_split_data(merged_data):
 #########################MODEL TRAINING CODE#############################
 
 def train_linear_model(X_train, y_train):
+    """
+    Train a Linear Regression model.
+    Args:
+        X_train (DataFrame): Training feature matrix.
+        y_train (array-like): Training target variable.
+    Returns:
+        model (LinearRegression): Trained Linear Regression model.
+    """
     try:
         model = LinearRegression()
         model.fit(X_train, y_train)
+        print("Linear Regression model trained successfully.")
         return model
     except Exception as e:
-        print(f"Error while training Linear Regression model: {e}")
+        print(f"Error during Linear Regression model training: {e}")
         return None
 
-def train_ridge_model(X_train, y_train, alpha=1.0):
+def evaluate_and_predict(model, X_test):
+    """
+    Generate predictions using the trained model.
+    Args:
+        model (sklearn estimator): Trained model.
+        X_test (DataFrame): Test feature matrix.
+    Returns:
+        y_pred (array-like): Predicted values.
+    """
     try:
-        ridge_model = Ridge(alpha=alpha)
-        ridge_model.fit(X_train, y_train)
-        return ridge_model
+        y_pred = model.predict(X_test)
+        print("Predictions generated successfully.")
+        return y_pred
     except Exception as e:
-        print(f"Error while training Ridge Regression model: {e}")
+        print(f"Error during prediction: {e}")
         return None
 
-def train_lasso_model(X_train, y_train, alpha=0.1):
+def cross_validate_model(model, X, y, cv_folds=5):
+    """
+    Perform cross-validation on the provided model and calculate Mean Squared Error (MSE).
+    Args:
+        model (sklearn estimator): Trained model to evaluate.
+        X (DataFrame): Feature matrix.
+        y (array-like): Target variable.
+        cv_folds (int): Number of cross-validation folds.
+    """
     try:
-        lasso_model = Lasso(alpha=alpha)
-        lasso_model.fit(X_train, y_train)
-        return lasso_model
-    except Exception as e:
-        print(f"Error while training Lasso Regression model: {e}")
-        return None
-
-def evaluate_model_with_cross_validation(model, X, y):
-    try:
-        cv_scores = cross_val_score(model, X, y, cv=5, scoring='neg_mean_squared_error')
+        cv_scores = cross_val_score(model, X, y, cv=cv_folds, scoring='neg_mean_squared_error')
         mean_cv_mse = -cv_scores.mean()
-        print(f"Cross-Validation Mean Squared Error (MSE): {mean_cv_mse:.4f}")
+        print(f"Cross-Validation MSE: {mean_cv_mse:.4f}")
         return mean_cv_mse
     except Exception as e:
         print(f"Error during cross-validation: {e}")
-        return None
 
+def main(X_train, X_test, y_train, y_test, X, y):
+    """
+    Main function to train and evaluate models.
+    Args:
+        X_train, X_test, y_train, y_test (DataFrame, array-like): Train-test split data.
+        X, y (DataFrame, array-like): Complete feature matrix and target variable.
+    """
+    try:
+        # Train the Linear Regression model
+        model = train_linear_model(X_train, y_train)
+        if model:
+            # Save the trained model
+            joblib.dump(model, 'linear_model.pkl')
+            print("Model saved as 'linear_model.pkl'")
+
+            # Generate predictions
+            y_pred = evaluate_and_predict(model, X_test)
+
+            # Perform cross-validation
+            cross_validate_model(model, X, y)
+
+            return model, y_pred
+        else:
+            print("Model training failed.")
+            return None, None
+    except Exception as e:
+        print(f"An error occurred in the main function: {e}")
+        return None, None
+    
 def main():
     try:
         energy_file = get_file_path('energy_data.csv')
@@ -390,26 +434,9 @@ def main():
         print(f"y_test shape: {y_test.shape}")
 
          # Train the Linear Regression model
-        linear_model = train_linear_model(X_train, y_train)
-        if linear_model:
-            joblib.dump(linear_model, 'linear_model.pkl')
-            print("Linear Regression model saved as 'linear_model.pkl'")
-            # Evaluate the model using cross-validation
-            evaluate_model_with_cross_validation(linear_model, X, y)
+       
 
-        # Train and evaluate Ridge Regression model
-        ridge_model = train_ridge_model(X_train, y_train, alpha=1.0)
-        if ridge_model:
-            joblib.dump(ridge_model, 'ridge_model.pkl')
-            print("Ridge Regression model saved as 'ridge_model.pkl'")
-            evaluate_model_with_cross_validation(ridge_model, X, y)
-
-        # Train and evaluate Lasso Regression model
-        lasso_model = train_lasso_model(X_train, y_train, alpha=0.1)
-        if lasso_model:
-            joblib.dump(lasso_model, 'lasso_model.pkl')
-            print("Lasso Regression model saved as 'lasso_model.pkl'")
-            evaluate_model_with_cross_validation(lasso_model, X, y)
+############################################MODEL EVALUATION STARTS HERE##########################################
 
     except Exception as e:
         print(f"An error occurred in the main function: {e}")
